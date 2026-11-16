@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
-using SshTunnelManager.Core;
-using SshTunnelManager.UI;
+using WindowsSshPlane.Core;
+using WindowsSshPlane.UI;
 
-namespace SshTunnelManager;
+namespace WindowsSshPlane;
 
 internal static class Program
 {
@@ -18,7 +18,7 @@ internal static class Program
         {
             // WinExe 默认没有控制台，自检时尝试挂到调用方控制台，方便命令行查看
             AttachConsole(AttachParentProcess);
-            var report = Path.Combine(Path.GetTempPath(), "SshTunnelManager-selftest.txt");
+            var report = Path.Combine(Path.GetTempPath(), "Windows-SSH-Plane-selftest.txt");
             return SelfTest.Run(report);
         }
 
@@ -60,7 +60,7 @@ internal static class Program
 
         MessageBox.Show(
             "程序遇到未处理的错误：" + Environment.NewLine + Environment.NewLine + ex.Message,
-            "SSH 反向端口转发",
+            "Windows SSH Plane",
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
     }

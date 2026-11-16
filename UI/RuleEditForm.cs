@@ -1,6 +1,6 @@
-using SshTunnelManager.Core;
+using WindowsSshPlane.Core;
 
-namespace SshTunnelManager.UI;
+namespace WindowsSshPlane.UI;
 
 /// <summary>新增 / 编辑一条 -R 反向转发规则。</summary>
 public sealed class RuleEditForm : Form

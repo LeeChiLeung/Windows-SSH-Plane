@@ -1,6 +1,6 @@
-using SshTunnelManager.Core;
+using WindowsSshPlane.Core;
 
-namespace SshTunnelManager.UI;
+namespace WindowsSshPlane.UI;
 
 /// <summary>启动时弹出的登录框：输入密码（以及可修改的服务器参数）。密码只保留在内存中。</summary>
 public sealed class PasswordForm : Form
@@ -24,7 +24,7 @@ public sealed class PasswordForm : Form
 
     private void BuildUi()
     {
-        Text = "SSH 反向端口转发 - 登录";
+        Text = "Windows SSH Plane - 登录";
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;

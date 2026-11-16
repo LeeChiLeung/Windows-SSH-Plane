@@ -1,7 +1,7 @@
 using System.ComponentModel;
-using SshTunnelManager.Core;
+using WindowsSshPlane.Core;
 
-namespace SshTunnelManager.UI;
+namespace WindowsSshPlane.UI;
 
 /// <summary>主窗口：管理 SSH 连接与多条反向端口转发规则。</summary>
 public sealed class MainForm : Form
@@ -44,7 +44,7 @@ public sealed class MainForm : Form
 
     private void BuildUi()
     {
-        Text = "SSH 反向端口转发管理器";
+        Text = "Windows SSH Plane - SSH 反向端口转发管理器";
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = new Font("Microsoft YaHei UI", 9f);
@@ -141,7 +141,7 @@ public sealed class MainForm : Form
         var logPanel = new Panel { Dock = DockStyle.Fill };
         var logHeader = new Label
         {
-            Text = "运行日志（同时写入 %APPDATA%\\SshTunnelManager\\app.log）",
+            Text = "运行日志（同时写入 %APPDATA%\\Windows-SSH-Plane\\app.log）",
             Dock = DockStyle.Top,
             Height = 22,
             ForeColor = Color.DimGray,
@@ -192,7 +192,7 @@ public sealed class MainForm : Form
         Controls.Add(root);
 
         _tray.Icon = SystemIcons.Application;
-        _tray.Text = "SSH 反向端口转发";
+        _tray.Text = "Windows SSH Plane";
         _tray.Visible = true;
         var trayMenu = new ContextMenuStrip();
         var miShow = new ToolStripMenuItem("显示主界面");
@@ -331,7 +331,7 @@ public sealed class MainForm : Form
         if (WindowState == FormWindowState.Minimized && _tray.Visible)
         {
             Hide();
-            _tray.ShowBalloonTip(1500, "SSH 反向端口转发", "已最小化到托盘，端口转发仍在后台运行。", ToolTipIcon.Info);
+            _tray.ShowBalloonTip(1500, "Windows SSH Plane", "已最小化到托盘，端口转发仍在后台运行。", ToolTipIcon.Info);
         }
     }
 
@@ -652,8 +652,8 @@ public sealed class MainForm : Form
         {
             var enabledCount = _rules.Count(r => r.Enabled);
             _tray.Text = connected
-                ? $"SSH 反向转发：已连接（启用 {enabledCount} 条）"
-                : "SSH 反向转发：未连接";
+                ? $"Windows SSH Plane：已连接（启用 {enabledCount} 条）"
+                : "Windows SSH Plane：未连接";
         }
         catch
         {

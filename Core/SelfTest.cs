@@ -1,9 +1,9 @@
 using System.Net.Sockets;
 using System.Text;
 
-namespace SshTunnelManager.Core;
+namespace WindowsSshPlane.Core;
 
-/// <summary>无界面自检：用 SshTunnelManager.exe --selftest 运行，供构建后验证核心逻辑。</summary>
+/// <summary>无界面自检：用 Windows-SSH-Plane.exe --selftest 运行，供构建后验证核心逻辑。</summary>
 public static class SelfTest
 {
     /// <summary>执行自检；返回 0 表示全部通过。</summary>
@@ -56,7 +56,7 @@ Check("默认不预置任何服务器地址", defaults.ServerHost.Length == 0, s
         Check("合法规则通过校验", okRule.Validate(out _));
 
         // 3. 配置读写往返（临时目录，不影响用户配置）
-        var tempDir = Path.Combine(Path.GetTempPath(), "SshTunnelManagerSelfTest_" + Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(Path.GetTempPath(), "WindowsSSHPlaneSelfTest_" + Guid.NewGuid().ToString("N"));
         var tempFile = Path.Combine(tempDir, "config.json");
         try
         {

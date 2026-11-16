@@ -1,4 +1,6 @@
-# SSH 反向端口转发管理器（.NET / WinForms）
+# Windows SSH Plane
+
+> SSH 反向端口转发管理器 · .NET 10 / WinForms 桌面版
 
 把一个需要命令行手敲、还要在控制台里输密码的 SSH 反向转发命令，做成一个双击即用的小工具：
 启动弹窗输入密码 → 自动建立转发 → 界面里随时增删/启停每一条 `-R` 规则，断线自动重连。
@@ -22,10 +24,10 @@ ssh -N -T -p <端口> \
 
 ## 一、直接运行
 
-双击 `SshTunnelManager.exe`（`dist` 文件夹内），或在命令行运行：
+双击 `Windows-SSH-Plane.exe`（`dist` 文件夹内），或在命令行运行：
 
 ```
-SshTunnelManager.exe
+Windows-SSH-Plane.exe
 ```
 
 运行后会弹出登录框，依次确认/填写：
@@ -58,7 +60,7 @@ SshTunnelManager.exe
 - **勾选/取消「启用」**：连接状态下立即生效，不影响其他规则。
 - **直接改表格里的端口/地址**：连接状态下会自动重启该条转发使其生效。
 - **修改账号/密码**：右上角按钮，改完会自动重连。
-- **运行日志**：窗口下半部分实时显示，同时写入 `%APPDATA%\SshTunnelManager\app.log`，出问题时先看这里。
+- **运行日志**：窗口下半部分实时显示，同时写入 `%APPDATA%\Windows-SSH-Plane\app.log`，出问题时先看这里。
 
 ## 三、手动选择端口对应
 
@@ -83,17 +85,19 @@ SshTunnelManager.exe
 
 | 文件 | 路径 | 内容 |
 | --- | --- | --- |
-| 配置 | `%APPDATA%\SshTunnelManager\config.json` | 服务器地址/端口/用户名、保活参数、全部转发规则 |
-| 日志 | `%APPDATA%\SshTunnelManager\app.log` | 运行日志 |
+| 配置 | `%APPDATA%\Windows-SSH-Plane\config.json` | 服务器地址/端口/用户名、保活参数、全部转发规则 |
+| 日志 | `%APPDATA%\Windows-SSH-Plane\app.log` | 运行日志 |
 
 **密码不写入任何文件**，只保存在进程内存里，退出即丢。配置文件损坏时会自动备份为 `config.json.bak` 并回落到默认配置。
+
+若本机还留着改名前的 `%APPDATA%\SshTunnelManager` 目录，首次运行会自动把其中的配置与日志复制到新目录，原有服务器地址与转发规则不会丢。
 
 ## 五、命令行参数
 
 ```
-SshTunnelManager.exe                 启动即弹密码框并连接（默认）
-SshTunnelManager.exe --no-autoconnect  只打开主界面不连接，首次点“连接”时才要密码
-SshTunnelManager.exe --selftest        无界面自检（配置读写、规则校验、端口连通性），结果同时写入 %TEMP%\SshTunnelManager-selftest.txt
+Windows-SSH-Plane.exe                 启动即弹密码框并连接（默认）
+Windows-SSH-Plane.exe --no-autoconnect  只打开主界面不连接，首次点“连接”时才要密码
+Windows-SSH-Plane.exe --selftest        无界面自检（配置读写、规则校验、端口连通性），结果同时写入 %TEMP%\Windows-SSH-Plane-selftest.txt
 ```
 
 ## 六、编译（需要时）
@@ -112,7 +116,7 @@ dotnet publish -c Release -o dist
 源码结构：
 
 ```
-SshTunnelManager/
+Windows-SSH-Plane/
 ├─ Program.cs              入口：密码弹窗、命令行参数
 ├─ Core/
 │  ├─ AppConfig.cs         配置模型（服务器、保活、规则）

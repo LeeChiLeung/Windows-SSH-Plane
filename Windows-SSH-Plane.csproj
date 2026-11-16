@@ -6,12 +6,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>SshTunnelManager</RootNamespace>
-    <AssemblyName>SshTunnelManager</AssemblyName>
-    <Product>SSH 反向端口转发管理器</Product>
+    <RootNamespace>WindowsSshPlane</RootNamespace>
+    <AssemblyName>Windows-SSH-Plane</AssemblyName>
+    <Product>Windows SSH Plane</Product>
     <Version>1.0.0</Version>
     <FileVersion>1.0.0.0</FileVersion>
-    <AssemblyTitle>SSH 反向端口转发管理器</AssemblyTitle>
+    <AssemblyTitle>Windows SSH Plane - SSH 反向端口转发管理器</AssemblyTitle>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 

@@ -1,4 +1,4 @@
-namespace SshTunnelManager.Core;
+namespace WindowsSshPlane.Core;
 
 /// <summary>程序配置：服务器连接参数 + 转发规则列表。密码不落盘。</summary>
 public sealed class AppConfig

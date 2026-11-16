@@ -2,7 +2,7 @@ using System.Net.Sockets;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 
-namespace SshTunnelManager.Core;
+namespace WindowsSshPlane.Core;
 
 /// <summary>
 /// 一条 SSH 连接上管理多条远端端口转发（等价 ssh -N -T -R ...）。

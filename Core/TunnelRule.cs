@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 
-namespace SshTunnelManager.Core;
+namespace WindowsSshPlane.Core;
 
 /// <summary>
 /// 一条反向端口转发规则，等价于 ssh 的

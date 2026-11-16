@@ -19,7 +19,7 @@ if /i "%1"=="selfcontained" (
   echo [1/2] 自包含单文件发布 ...
   "%DOTNET%" publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist-selfcontained
   if errorlevel 1 goto fail
-  echo [2/2] 完成：dist-selfcontained\SshTunnelManager.exe
+  echo [2/2] 完成：dist-selfcontained\Windows-SSH-Plane.exe
   goto end
 )
 
@@ -28,13 +28,13 @@ echo [1/3] 编译 ...
 if errorlevel 1 goto fail
 
 echo [2/3] 自检 ...
-bin\Release\net10.0-windows\SshTunnelManager.exe --selftest
+bin\Release\net10.0-windows\Windows-SSH-Plane.exe --selftest
 if errorlevel 1 goto fail
 
 echo [3/3] 发布到 dist ...
 "%DOTNET%" publish -c Release -o dist
 if errorlevel 1 goto fail
-echo 完成：dist\SshTunnelManager.exe
+echo 完成：dist\Windows-SSH-Plane.exe
 goto end
 
 :fail
