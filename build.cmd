@@ -2,18 +2,22 @@
 chcp 65001 >nul
 setlocal
 
-rem 若 PATH 里没有 dotnet，尝试本机已安装的用户目录版本
-set "DOTNET=dotnet"
-where dotnet >nul 2>nul
-if errorlevel 1 (
+rem 选一个真正带 SDK 的 dotnet：PATH 里的可能只有运行时（能跑程序但没有编译能力）
+set "DOTNET="
+for /f "delims=" %%i in ('dotnet --list-sdks 2^>nul') do set "DOTNET=dotnet"
+if not defined DOTNET (
   if exist "%USERPROFILE%\.dotnet-sdk\dotnet.exe" (
-    set "DOTNET=%USERPROFILE%\.dotnet-sdk\dotnet.exe"
-  ) else (
-    echo [错误] 未找到 dotnet SDK，请先安装 .NET 10 SDK: https://dotnet.microsoft.com/download
-    pause
-    exit /b 1
+    for /f "delims=" %%i in ('"%USERPROFILE%\.dotnet-sdk\dotnet.exe" --list-sdks 2^>nul') do set "DOTNET=%USERPROFILE%\.dotnet-sdk\dotnet.exe"
   )
 )
+if not defined DOTNET (
+  echo [错误] 未找到可用的 .NET SDK（PATH 里的 dotnet 可能只有运行时）：
+  echo        请安装 .NET 10 SDK https://dotnet.microsoft.com/download
+  echo        或把它装到 %USERPROFILE%\.dotnet-sdk 后再运行本脚本
+  pause
+  exit /b 1
+)
+echo 使用 SDK: %DOTNET%
 
 if /i "%1"=="selfcontained" (
   echo [1/2] 自包含单文件发布 ...
