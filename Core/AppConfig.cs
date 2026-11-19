@@ -18,6 +18,9 @@ public sealed class AppConfig
     /// <summary>断线后最多自动重连次数，对应 -o ServerAliveCountMax=3。</summary>
     public int KeepAliveCountMax { get; set; } = 3;
 
+    /// <summary>空闲超时分钟数：连续这么久没有通道数据传输就自动断开；0 表示不启用。</summary>
+    public int IdleTimeoutMinutes { get; set; } = 30;
+
     /// <summary>转发规则列表。</summary>
     public List<TunnelRule> Rules { get; set; } = new();
 
@@ -64,6 +67,15 @@ public sealed class AppConfig
         if (KeepAliveCountMax < 1)
         {
             KeepAliveCountMax = 3;
+        }
+
+        if (IdleTimeoutMinutes < 0)
+        {
+            IdleTimeoutMinutes = 0;
+        }
+        else if (IdleTimeoutMinutes > 1440)
+        {
+            IdleTimeoutMinutes = 1440;
         }
 
         Rules ??= new List<TunnelRule>();

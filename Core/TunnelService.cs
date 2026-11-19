@@ -21,6 +21,9 @@ public sealed class TunnelService : IDisposable
     private int _reconnectCount;
     private string _password = string.Empty;
     private bool _disposed;
+    private IdleMonitor? _idle;
+    private SessionTrafficHook? _trafficHook;
+    private bool _requestActivityFallback;
 
     /// <summary>把回调切回 UI 线程用的派发器，由界面层注入。</summary>
     public Action<Action>? UiDispatch { get; set; }
@@ -36,6 +39,9 @@ public sealed class TunnelService : IDisposable
 
     /// <summary>最大自动重连次数（对应 ServerAliveCountMax）。</summary>
     public int KeepAliveCountMax { get; private set; } = 3;
+
+    /// <summary>空闲超时分钟数：连续这么久没有通道数据传输就自动断开；0 表示不启用。</summary>
+    public int IdleTimeoutMinutes { get; private set; } = 30;
 
     public string ServerSummary => $"{User}@{Host}:{Port}";
 
@@ -64,7 +70,30 @@ public sealed class TunnelService : IDisposable
         User = config.ServerUser.Trim();
         KeepAliveSeconds = Math.Max(5, config.KeepAliveSeconds);
         KeepAliveCountMax = Math.Max(1, config.KeepAliveCountMax);
+        IdleTimeoutMinutes = Math.Clamp(config.IdleTimeoutMinutes, 0, 1440);
         _password = password;
+    }
+
+    /// <summary>当前已空闲时长；未连接时为 null。</summary>
+    public TimeSpan? IdleFor
+    {
+        get
+        {
+            var idle = _idle;
+            return idle is null ? null : idle.IdleFor(DateTimeOffset.UtcNow);
+        }
+    }
+
+    /// <summary>本次连接累计观测到的通道数据字节数。</summary>
+    public long TotalBytes => _idle?.TotalBytes ?? 0;
+
+    /// <summary>运行期调整空闲超时分钟数（0 表示关闭）。</summary>
+    public void UpdateIdleTimeout(int minutes)
+    {
+        IdleTimeoutMinutes = Math.Clamp(minutes, 0, 1440);
+        Log(IdleTimeoutMinutes == 0
+            ? "空闲超时已关闭：隧道将一直保持，直到手动断开"
+            : $"空闲超时已设为 {IdleTimeoutMinutes} 分钟：连续这么久没有数据传输就自动断开");
     }
 
     /// <summary>建立连接并启动所有启用状态的转发规则。返回 null 表示成功。</summary>
@@ -230,6 +259,21 @@ public sealed class TunnelService : IDisposable
 
         Log($"连接成功：{User}@{Host}:{Port}（保活 {KeepAliveSeconds}s，最多自动重连 {KeepAliveCountMax} 次）");
 
+        // 空闲判定：优先用真实的通道数据量；失败则退回“有连接建立”作为活动信号
+        _idle = new IdleMonitor();
+        _trafficHook = SessionTrafficHook.TryAttach(client, bytes => _idle?.NotifyActivity(bytes), out var trafficError);
+        _requestActivityFallback = _trafficHook is null;
+        if (_requestActivityFallback)
+        {
+            Log($"提示：无法直接计量通道字节数（{trafficError}），空闲判定改为“隧道内是否有新连接建立”");
+        }
+        else
+        {
+            Log(IdleTimeoutMinutes == 0
+                ? "已开始统计隧道流量；空闲超时当前为关闭状态"
+                : $"已开始统计隧道流量；连续 {IdleTimeoutMinutes} 分钟无数据传输将自动断开");
+        }
+
         // 等价 -o ExitOnForwardFailure=yes：任一端口转发建立失败，就整体断开
         var failures = new List<string>();
         foreach (var rule in _rules.Where(r => r.Enabled))
@@ -296,7 +340,13 @@ public sealed class TunnelService : IDisposable
             return message;
         }
 
-port.Exception += (_, e) =>
+if (_requestActivityFallback)
+        {
+            // 无法计量字节时，把“有新连接建立”也算作活动，避免误判为空闲
+            port.RequestReceived += (_, _) => _idle?.NotifyActivity();
+        }
+
+        port.Exception += (_, e) =>
         {
             var message = e.Exception.Message;
             SetStatus(rule, "转发异常", message);
@@ -389,6 +439,7 @@ port.Exception += (_, e) =>
         if (connected)
         {
             Interlocked.Exchange(ref _reconnectCount, 0);
+            CheckIdleTimeout();
             return;
         }
 
@@ -424,9 +475,62 @@ port.Exception += (_, e) =>
         }
     }
 
+    /// <summary>空闲超时检查：连续超过阈值没有数据传输就断开，且不会触发自动重连。</summary>
+    private void CheckIdleTimeout()
+    {
+        var idle = _idle;
+        if (idle is null || IdleTimeoutMinutes <= 0)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (!idle.IsExpired(now, IdleTimeoutMinutes))
+        {
+            return;
+        }
+
+        if (!_opLock.Wait(0))
+        {
+            return;
+        }
+
+        try
+        {
+            Log($"隧道已连续 {IdleMonitor.Describe(idle.IdleFor(now))} 没有数据传输，达到空闲超时阈值 {IdleTimeoutMinutes} 分钟，自动断开（本次连接累计流量 {FormatBytes(idle.TotalBytes)}）");
+            DoDisconnect("空闲超时");
+            RaiseStateChanged();
+        }
+        finally
+        {
+            _opLock.Release();
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return bytes + " B";
+        }
+
+        if (bytes < 1024 * 1024)
+        {
+            return (bytes / 1024.0).ToString("0.0") + " KB";
+        }
+
+        return (bytes / 1024.0 / 1024.0).ToString("0.0") + " MB";
+    }
+
     private void DoDisconnect(string reason)
     {
         StopWatchdog();
+
+        var hook = _trafficHook;
+        _trafficHook = null;
+        _requestActivityFallback = false;
+        _idle = null;
+        hook?.Dispose();
 
         SshClient? client;
         List<KeyValuePair<Guid, ForwardedPortRemote>> ports;

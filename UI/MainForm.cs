@@ -18,6 +18,9 @@ public sealed class MainForm : Form
     private readonly Button _btnDisconnect = new();
     private readonly Button _btnReconnect = new();
     private readonly Button _btnAccount = new();
+    private readonly Button _btnIdle = new();
+    private readonly Label _lblIdle = new();
+    private readonly System.Windows.Forms.Timer _idleTimer = new() { Interval = 15000 };
     private readonly NotifyIcon _tray = new();
     private bool _busy;
     private bool _closingConfirmed;
@@ -63,6 +66,12 @@ public sealed class MainForm : Form
         _lblKeepAlive.AutoSize = true;
         _lblKeepAlive.ForeColor = Color.DimGray;
 
+        _lblIdle.AutoSize = true;
+        _lblIdle.ForeColor = Color.DimGray;
+        _lblIdle.Text = _service.IdleTimeoutMinutes == 0
+            ? "空闲超时：已关闭（当前未连接）"
+            : $"空闲超时：{_service.IdleTimeoutMinutes} 分钟无数据传输自动断开（当前未连接）";
+
         var header = new Panel { Dock = DockStyle.Fill };
         var info = new FlowLayoutPanel
         {
@@ -74,6 +83,7 @@ public sealed class MainForm : Form
         info.Controls.Add(_lblServer);
         info.Controls.Add(_lblState);
         info.Controls.Add(_lblKeepAlive);
+        info.Controls.Add(_lblIdle);
 
         var headerButtons = new FlowLayoutPanel
         {
@@ -88,9 +98,12 @@ public sealed class MainForm : Form
         PrepareButton(_btnReconnect, "重新连接", Color.SteelBlue);
         PrepareButton(_btnAccount, "修改账号/密码", Color.DimGray);
         _btnAccount.Width = 136;
+        PrepareButton(_btnIdle, "空闲超时", Color.DimGray);
+        _btnIdle.Width = 100;
         headerButtons.Controls.Add(_btnConnect);
         headerButtons.Controls.Add(_btnDisconnect);
         headerButtons.Controls.Add(_btnReconnect);
+        headerButtons.Controls.Add(_btnIdle);
         headerButtons.Controls.Add(_btnAccount);
 
         header.Controls.Add(info);
@@ -104,6 +117,10 @@ public sealed class MainForm : Form
             AppendLog("已手动断开连接");
         };
         _btnAccount.Click += async (_, _) => await ChangeAccountAsync();
+        _btnIdle.Click += (_, _) => ChangeIdleTimeout();
+
+        _idleTimer.Tick += (_, _) => UpdateIdleLabel();
+        _idleTimer.Start();
 
         ConfigureGrid();
 
@@ -180,7 +197,7 @@ public sealed class MainForm : Form
             RowCount = 4,
             Padding = new Padding(12, 10, 12, 10),
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 128));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 56));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 44));
@@ -359,6 +376,8 @@ public sealed class MainForm : Form
             AppendLog("配置已保存：" + ConfigStore.DefaultPath);
         }
 
+        _idleTimer.Stop();
+        _idleTimer.Dispose();
         _tray.Visible = false;
         _tray.Dispose();
         _service.Dispose();
@@ -421,6 +440,60 @@ public sealed class MainForm : Form
             _busy = false;
             RefreshState();
         }
+    }
+
+    private void ChangeIdleTimeout()
+    {
+        using var dialog = new IdleTimeoutForm(_service.IdleTimeoutMinutes);
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        _config.IdleTimeoutMinutes = dialog.Minutes;
+        ConfigStore.Save(_config);
+        _service.UpdateIdleTimeout(dialog.Minutes);
+        UpdateIdleLabel();
+    }
+
+    private void UpdateIdleLabel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var minutes = _service.IdleTimeoutMinutes;
+        var timeoutText = minutes == 0 ? "空闲超时：已关闭" : $"空闲超时：{minutes} 分钟";
+        var idle = _service.IdleFor;
+        if (!_service.IsConnected || idle is null)
+        {
+            _lblIdle.Text = timeoutText + "（当前未连接）";
+            return;
+        }
+
+        var text = $"{timeoutText}｜已空闲 {IdleMonitor.Describe(idle.Value)}，累计流量 {FormatBytes(_service.TotalBytes)}";
+        if (minutes > 0)
+        {
+            var remain = TimeSpan.FromMinutes(minutes) - idle.Value;
+            text += remain > TimeSpan.Zero
+                ? $"，距自动断开还剩 {IdleMonitor.Describe(remain)}"
+                : "，已到阈值";
+        }
+
+        _lblIdle.Text = text;
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return bytes + " B";
+        }
+
+        return bytes < 1024 * 1024
+            ? (bytes / 1024.0).ToString("0.0") + " KB"
+            : (bytes / 1024.0 / 1024.0).ToString("0.0") + " MB";
     }
 
     private async Task ChangeAccountAsync()
@@ -647,6 +720,8 @@ public sealed class MainForm : Form
         _btnDisconnect.Enabled = connected;
         _btnReconnect.Enabled = !_busy;
         _btnAccount.Enabled = !_busy;
+
+        UpdateIdleLabel();
 
         try
         {

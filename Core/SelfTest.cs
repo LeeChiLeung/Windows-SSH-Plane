@@ -75,6 +75,7 @@ Check("默认不预置任何服务器地址", defaults.ServerHost.Length == 0, s
             Check("配置读回规则数量一致", loaded.Rules.Count == 2, loaded.Rules.Count.ToString());
             Check("配置读回服务器端口一致", loaded.ServerPort == 9787);
             Check("配置读回停用状态一致", loaded.Rules.Any(r => r.BindPort == 22000 && !r.Enabled));
+            Check("配置读回空闲超时 30 分钟", loaded.IdleTimeoutMinutes == 30, loaded.IdleTimeoutMinutes.ToString());
             var raw = File.ReadAllText(tempFile);
             Check("配置文件中不含密码字段", !raw.Contains("password", StringComparison.OrdinalIgnoreCase));
         }
@@ -97,7 +98,27 @@ Check("默认不预置任何服务器地址", defaults.ServerHost.Length == 0, s
             }
         }
 
-// 4. 网络可达性（仅信息项，不作为失败依据）
+// 4. 空闲超时判定（注入时钟，不必真等 30 分钟）
+        var fakeNow = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var monitor = new IdleMonitor(() => fakeNow);
+        Check("刚连接时未超时", !monitor.IsExpired(fakeNow, 30));
+
+        fakeNow = fakeNow.AddMinutes(29);
+        Check("空闲 29 分钟仍未超时", !monitor.IsExpired(fakeNow, 30));
+
+        monitor.NotifyActivity(1024);
+        Check("发生数据传输后字节数累计", monitor.TotalBytes == 1024, monitor.TotalBytes.ToString());
+        Check("数据传输后重新计时", !monitor.IsExpired(fakeNow.AddMinutes(29), 30));
+
+        fakeNow = fakeNow.AddMinutes(30);
+        Check("连续 30 分钟无数据传输则超时", monitor.IsExpired(fakeNow, 30), IdleMonitor.Describe(monitor.IdleFor(fakeNow)));
+        Check("阈值设为 0 时永不超时", !monitor.IsExpired(fakeNow.AddHours(10), 0));
+
+        var fresh = new IdleMonitor(() => fakeNow);
+        Check("新连接从连接时刻开始计时", fresh.IdleFor(fakeNow) < TimeSpan.FromSeconds(1), IdleMonitor.Describe(fresh.IdleFor(fakeNow)));
+        Check("Describe 输出含分钟", IdleMonitor.Describe(TimeSpan.FromMinutes(45)).Contains("45"), IdleMonitor.Describe(TimeSpan.FromMinutes(45)));
+
+        // 5. 网络可达性（仅信息项，不作为失败依据）
         // 待探测地址取自本机配置文件，不来自代码；输出做脱敏，避免地址被复制传播
         string Mask(string host)
         {
