@@ -32,8 +32,11 @@ echo [1/3] 编译 ...
 if errorlevel 1 goto fail
 
 echo [2/3] 自检 ...
+rem 该程序是窗口程序，输出不进控制台，自检结果同时写到临时目录的报告文件
 bin\Release\net10.0-windows\Windows-SSH-Plane.exe --selftest
-if errorlevel 1 goto fail
+set "SELFTEST_CODE=%ERRORLEVEL%"
+if exist "%TEMP%\Windows-SSH-Plane-selftest.txt" type "%TEMP%\Windows-SSH-Plane-selftest.txt"
+if not "%SELFTEST_CODE%"=="0" goto fail
 
 echo [3/3] 发布到 dist ...
 "%DOTNET%" publish -c Release -o dist
